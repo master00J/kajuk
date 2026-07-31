@@ -9,6 +9,7 @@ const { loadCommands } = require('./loadCommands');
 const { handleInteraction } = require('./events/interactionCreate');
 const { startWebhookServer } = require('./server/webhook');
 const { startDailySummary } = require('./services/dailySummary');
+const { deployCommands } = require('./services/deployCommands');
 require('./database/db');
 
 assertRuntimeConfig();
@@ -23,9 +24,16 @@ const client = new Client({
 
 client.commands = loadCommands();
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
   client.user.setActivity('generators | /info', { type: ActivityType.Watching });
+
+  try {
+    await deployCommands();
+  } catch (error) {
+    console.error('Failed to deploy slash commands:', error);
+  }
+
   startWebhookServer(client);
   startDailySummary(client);
 });
