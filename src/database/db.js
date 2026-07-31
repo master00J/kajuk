@@ -125,7 +125,21 @@ function migrate() {
       availability TEXT,
       why TEXT,
       status TEXT NOT NULL DEFAULT 'pending',
+      message_id TEXT,
+      channel_id TEXT,
+      decided_by TEXT,
+      decided_at TEXT,
+      decision_note TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS staff_application_votes (
+      application_id INTEGER NOT NULL,
+      voter_id TEXT NOT NULL,
+      vote TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (application_id, voter_id),
+      FOREIGN KEY (application_id) REFERENCES staff_applications(id)
     );
 
     CREATE TABLE IF NOT EXISTS account_stock (
@@ -199,7 +213,19 @@ function migrate() {
     );
   `);
 
+  ensureColumn('staff_applications', 'message_id', 'TEXT');
+  ensureColumn('staff_applications', 'channel_id', 'TEXT');
+  ensureColumn('staff_applications', 'decided_by', 'TEXT');
+  ensureColumn('staff_applications', 'decided_at', 'TEXT');
+  ensureColumn('staff_applications', 'decision_note', 'TEXT');
+
   seedProducts();
+}
+
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (columns.some((col) => col.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 
 function seedProducts() {

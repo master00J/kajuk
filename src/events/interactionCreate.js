@@ -17,8 +17,17 @@ const {
   rejectOrder,
   getOrderById,
 } = require('../services/revolutOrders');
+const {
+  castVote,
+  decideApplication,
+  refreshApplicationMessage,
+} = require('../services/staffApps');
 const { hasPerm, PERMS } = require('../utils/permissions');
 const { errorEmbed, successEmbed, warnEmbed } = require('../utils/embeds');
+
+function canReviewStaffApps(userId) {
+  return hasPerm(userId, PERMS.STAFF) || hasPerm(userId, PERMS.ADMIN);
+}
 
 async function handleInteraction(interaction, commands) {
   try {
@@ -190,6 +199,85 @@ async function handleInteraction(interaction, commands) {
             ),
           ],
           components: [],
+        });
+        return;
+      }
+
+      if (interaction.customId.startsWith('staffapp_vote_yes_')
+        || interaction.customId.startsWith('staffapp_vote_no_')) {
+        if (!canReviewStaffApps(interaction.user.id)) {
+          await interaction.reply({
+            embeds: [errorEmbed('No permission', 'Only staff can vote on applications.')],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const isYes = interaction.customId.startsWith('staffapp_vote_yes_');
+        const applicationId = Number(
+          interaction.customId.replace(isYes ? 'staffapp_vote_yes_' : 'staffapp_vote_no_', ''),
+        );
+        const result = castVote(applicationId, interaction.user.id, isYes ? 'yes' : 'no');
+
+        if (!result.ok) {
+          await interaction.reply({
+            embeds: [errorEmbed('Vote failed', result.error)],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        await refreshApplicationMessage(interaction.client, applicationId);
+        await interaction.reply({
+          embeds: [
+            successEmbed(
+              'Vote recorded',
+              `You voted **${isYes ? 'yes' : 'no'}**.\nCurrent score: ${result.counts.yesCount} yes / ${result.counts.noCount} no`,
+            ),
+          ],
+          ephemeral: true,
+        });
+        return;
+      }
+
+      if (interaction.customId.startsWith('staffapp_approve_')
+        || interaction.customId.startsWith('staffapp_deny_')) {
+        if (!canReviewStaffApps(interaction.user.id)) {
+          await interaction.reply({
+            embeds: [errorEmbed('No permission', 'Only staff can approve or deny applications.')],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const isApprove = interaction.customId.startsWith('staffapp_approve_');
+        const applicationId = Number(
+          interaction.customId.replace(isApprove ? 'staffapp_approve_' : 'staffapp_deny_', ''),
+        );
+
+        await interaction.deferReply({ ephemeral: true });
+
+        const result = await decideApplication(
+          interaction.client,
+          applicationId,
+          interaction.user.id,
+          isApprove ? 'approved' : 'denied',
+        );
+
+        if (!result.ok) {
+          await interaction.editReply({
+            embeds: [errorEmbed('Decision failed', result.error)],
+          });
+          return;
+        }
+
+        await interaction.editReply({
+          embeds: [
+            successEmbed(
+              isApprove ? 'Application approved' : 'Application denied',
+              `Application #${applicationId} is now **${result.application.status}**.`,
+            ),
+          ],
         });
         return;
       }

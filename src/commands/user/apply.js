@@ -6,7 +6,7 @@ const {
   ActionRowBuilder,
 } = require('discord.js');
 const { submitApplication, postApplication } = require('../../services/staffApps');
-const { successEmbed } = require('../../utils/embeds');
+const { successEmbed, errorEmbed } = require('../../utils/embeds');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -53,7 +53,7 @@ module.exports = {
   },
 
   async handleModal(interaction) {
-    const application = submitApplication({
+    const result = submitApplication({
       discordId: interaction.user.id,
       age: interaction.fields.getTextInputValue('age'),
       experience: interaction.fields.getTextInputValue('experience'),
@@ -61,10 +61,23 @@ module.exports = {
       why: interaction.fields.getTextInputValue('why'),
     });
 
-    await postApplication(interaction.client, application);
+    if (!result.ok) {
+      await interaction.reply({
+        embeds: [errorEmbed('Application blocked', result.error)],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await postApplication(interaction.client, result.application);
 
     await interaction.reply({
-      embeds: [successEmbed('Application submitted', 'Staff will review your application soon.')],
+      embeds: [
+        successEmbed(
+          'Application submitted',
+          'Your application was posted for staff voting. You will get a DM when it is approved or denied.',
+        ),
+      ],
       ephemeral: true,
     });
   },
