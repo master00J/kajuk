@@ -1,6 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { setPerms, getUserPerms, PERMS, hasPerm } = require('../../utils/permissions');
-const { config } = require('../../config');
+const { setPerms, getUserPerms, PERMS, hasPerm, isOwner } = require('../../utils/permissions');
 const { successEmbed, errorEmbed } = require('../../utils/embeds');
 
 module.exports = {
@@ -18,13 +17,20 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    const canManage =
-      config.ownerIds.includes(interaction.user.id) ||
-      hasPerm(interaction.user.id, PERMS.ADMIN);
-
-    if (!canManage) {
+    if (!isOwner(interaction.user.id) && !hasPerm(interaction.user.id, PERMS.ADMIN)) {
       await interaction.reply({
-        embeds: [errorEmbed('No permission', 'Only owners/admins can grant permissions.')],
+        embeds: [
+          errorEmbed(
+            'No permission',
+            [
+              'Only owners/admins can grant permissions.',
+              '',
+              `Your Discord ID: \`${interaction.user.id}\``,
+              'Put this exact ID in `OWNER_IDS` on the host, then restart the bot.',
+              'Use `/whoami` to verify after restart.',
+            ].join('\n'),
+          ),
+        ],
         ephemeral: true,
       });
       return;

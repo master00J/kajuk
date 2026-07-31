@@ -8,11 +8,19 @@ function required(name) {
   return value;
 }
 
+function cleanId(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '')
+    .replace(/[^\d]/g, '');
+}
+
 function list(name) {
-  return (process.env[name] || '')
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const raw = process.env[name] || '';
+  return raw
+    .split(/[,\s;]+/)
+    .map((part) => cleanId(part))
+    .filter((part) => part.length >= 15);
 }
 
 const STORES = [
@@ -81,7 +89,7 @@ const config = {
   token: process.env.DISCORD_TOKEN,
   clientId: process.env.DISCORD_CLIENT_ID,
   guildId: process.env.DISCORD_GUILD_ID || null,
-  ownerIds: list('OWNER_IDS'),
+  ownerIds: [...new Set([...list('OWNER_IDS'), ...list('OWNER_ID')])],
   channels: {
     log: process.env.LOG_CHANNEL_ID || null,
     sales: process.env.SALES_CHANNEL_ID || null,

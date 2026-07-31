@@ -26,6 +26,11 @@ client.commands = loadCommands();
 
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
+  console.log(
+    config.ownerIds.length
+      ? `Owners loaded: ${config.ownerIds.join(', ')}`
+      : 'WARNING: No OWNER_IDS configured. Admin commands will be locked.',
+  );
   client.user.setActivity('generators | /info', { type: ActivityType.Watching });
 
   try {

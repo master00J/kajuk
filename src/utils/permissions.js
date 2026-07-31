@@ -11,8 +11,13 @@ const PERMS = {
   STOCK: 'stock',
 };
 
+function isOwner(discordId) {
+  const id = String(discordId);
+  return config.ownerIds.some((ownerId) => String(ownerId) === id);
+}
+
 function getUserPerms(discordId) {
-  if (config.ownerIds.includes(discordId)) {
+  if (isOwner(discordId)) {
     return Object.values(PERMS);
   }
 
@@ -48,4 +53,4 @@ function setPerms(discordId, perms, grantedBy) {
   `).run(discordId, value, grantedBy);
 }
 
-module.exports = { PERMS, getUserPerms, hasPerm, requirePerm, setPerms };
+module.exports = { PERMS, getUserPerms, hasPerm, requirePerm, setPerms, isOwner };
